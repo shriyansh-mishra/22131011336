@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './App.css';
 import { log } from './logger';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useParams } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Button, Container, TextField, Grid, Paper, IconButton, Box, Alert, Stack } from '@mui/material';
 
 import AddCircleIcon from '@mui/icons-material/AddCircle';
@@ -33,6 +33,50 @@ function isValidUrl(url: string) {
 
 function isValidShortcode(code: string) {
   return /^[a-zA-Z0-9]{1,12}$/.test(code); // alphanumeric, up to 12 chars
+}
+
+// Helper to get all short links from localStorage
+function getStoredShortLinks(): ShortenedUrl[] {
+  const data = localStorage.getItem('shortLinks');
+  return data ? JSON.parse(data) : [];
+}
+
+function setStoredShortLinks(links: ShortenedUrl[]) {
+  localStorage.setItem('shortLinks', JSON.stringify(links));
+}
+
+function ShortUrlRedirectPage() {
+  const { shortcode } = useParams();
+  const navigate = useNavigate();
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const links = getStoredShortLinks();
+    const found = links.find(l => l.shortcode === shortcode);
+    if (!found) {
+      setError('Short URL not found.');
+      return;
+    }
+    // Check expiry
+    const expiryDate = new Date(found.expiry);
+    if (expiryDate < new Date()) {
+      setError('This short URL has expired.');
+      return;
+    }
+    // Redirect
+    window.location.href = found.longUrl;
+  }, [shortcode]);
+
+  return error ? (
+    <Box sx={{ mt: 4, textAlign: 'center' }}>
+      <Alert severity="error">{error}</Alert>
+      <Button variant="contained" sx={{ mt: 2 }} onClick={() => navigate('/')}>Go Home</Button>
+    </Box>
+  ) : (
+    <Box sx={{ mt: 4, textAlign: 'center' }}>
+      <Typography>Redirecting...</Typography>
+    </Box>
+  );
 }
 
 function UrlShortenerPage() {
@@ -121,6 +165,9 @@ function UrlShortenerPage() {
     setResults(newResults);
     setUsedShortcodes(newShortcodes);
     setError(null);
+    // Append to localStorage for redirection
+    const prev = getStoredShortLinks();
+    setStoredShortLinks([...prev, ...newResults]);
   };
 
   return (
@@ -198,9 +245,9 @@ function App() {
 
   return (
     <Router>
-      <AppBar position="static">
+      <AppBar position="static" sx={{ backgroundColor: '#228B22', color: '#fff' }}>
         <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+          <Typography variant="h6" sx={{ flexGrow: 1, color: '#fff' }}>
             URL Shortener
           </Typography>
           <Button color="inherit" component={Link} to="/">
@@ -215,6 +262,7 @@ function App() {
         <Routes>
           <Route path="/" element={<UrlShortenerPage />} />
           <Route path="/stats" element={<StatisticsPage />} />
+          <Route path=":shortcode" element={<ShortUrlRedirectPage />} />
         </Routes>
       </Container>
     </Router>
