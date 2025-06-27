@@ -3,6 +3,7 @@ import './App.css';
 import { log } from './logger';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useParams } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Button, Container, TextField, Grid, Paper, IconButton, Box, Alert, Stack } from '@mui/material';
+import { logApi } from './logApi';
 
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import RemoveCircleIcon from '@mui/icons-material/RemoveCircle';
@@ -69,16 +70,20 @@ function ShortUrlRedirectPage() {
     const found = links.find(l => l.shortcode === shortcode);
     if (!found) {
       setError('Short URL not found.');
+      logApi('frontend', 'error', 'component', `Short URL not found: ${shortcode}`);
       return;
     }
     // Check expiry
     const expiryDate = new Date(found.expiry);
     if (expiryDate < new Date()) {
       setError('This short URL has expired.');
+      logApi('frontend', 'warn', 'component', `Short URL expired: ${shortcode}`);
       return;
     }
     // Increment click count
     incrementClick(shortcode!);
+    // Log redirection
+    logApi('frontend', 'info', 'component', `Redirecting for shortcode: ${shortcode}`);
     // Redirect
     window.location.href = found.longUrl;
   }, [shortcode]);
@@ -131,7 +136,7 @@ function UrlShortenerPage() {
     return code;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     const newResults: ShortenedUrl[] = [];
@@ -143,6 +148,7 @@ function UrlShortenerPage() {
       if (!isValidUrl(longUrl)) {
         setError(`Row ${i + 1}: Invalid URL format.`);
         log('error', `Invalid URL format: ${longUrl}`);
+        await logApi('frontend', 'error', 'component', `Invalid URL format: ${longUrl}`);
         return;
       }
       let validMins = 30;
@@ -150,6 +156,7 @@ function UrlShortenerPage() {
         if (!/^\d+$/.test(validity)) {
           setError(`Row ${i + 1}: Validity must be an integer.`);
           log('error', `Invalid validity: ${validity}`);
+          await logApi('frontend', 'error', 'component', `Invalid validity: ${validity}`);
           return;
         }
         validMins = parseInt(validity, 10);
@@ -159,11 +166,13 @@ function UrlShortenerPage() {
         if (!isValidShortcode(code)) {
           setError(`Row ${i + 1}: Invalid shortcode (alphanumeric, max 12 chars).`);
           log('error', `Invalid shortcode: ${code}`);
+          await logApi('frontend', 'error', 'component', `Invalid shortcode: ${code}`);
           return;
         }
         if (newShortcodes.has(code)) {
           setError(`Row ${i + 1}: Shortcode '${code}' already used.`);
           log('error', `Shortcode collision: ${code}`);
+          await logApi('frontend', 'error', 'component', `Shortcode collision: ${code}`);
           return;
         }
       } else {
@@ -179,6 +188,7 @@ function UrlShortenerPage() {
         createdAt: now,
       });
       log('info', 'Shortened URL created', { longUrl, shortUrl: SHORT_URL_PREFIX + code, expiry, shortcode: code });
+      await logApi('frontend', 'info', 'component', `Shortened URL created: ${SHORT_URL_PREFIX + code}`);
     }
     setResults(newResults);
     setUsedShortcodes(newShortcodes);
