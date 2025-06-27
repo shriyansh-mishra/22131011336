@@ -18,6 +18,8 @@ interface ShortenedUrl {
   shortUrl: string;
   expiry: string;
   shortcode: string;
+  createdAt?: string;
+  clicks?: number;
 }
 
 const SHORT_URL_PREFIX = window.location.origin + '/';
@@ -45,6 +47,18 @@ function setStoredShortLinks(links: ShortenedUrl[]) {
   localStorage.setItem('shortLinks', JSON.stringify(links));
 }
 
+// Helper to get click stats from localStorage
+function getClickStats(): Record<string, number> {
+  const data = localStorage.getItem('clickStats');
+  return data ? JSON.parse(data) : {};
+}
+
+function incrementClick(shortcode: string) {
+  const stats = getClickStats();
+  stats[shortcode] = (stats[shortcode] || 0) + 1;
+  localStorage.setItem('clickStats', JSON.stringify(stats));
+}
+
 function ShortUrlRedirectPage() {
   const { shortcode } = useParams();
   const navigate = useNavigate();
@@ -63,6 +77,8 @@ function ShortUrlRedirectPage() {
       setError('This short URL has expired.');
       return;
     }
+    // Increment click count
+    incrementClick(shortcode!);
     // Redirect
     window.location.href = found.longUrl;
   }, [shortcode]);
@@ -120,6 +136,7 @@ function UrlShortenerPage() {
     setError(null);
     const newResults: ShortenedUrl[] = [];
     const newShortcodes = new Set(usedShortcodes);
+    const now = new Date().toLocaleString();
     for (let i = 0; i < inputs.length; i++) {
       const { longUrl, validity, shortcode } = inputs[i];
       // Validation
@@ -159,6 +176,7 @@ function UrlShortenerPage() {
         shortUrl: SHORT_URL_PREFIX + code,
         expiry,
         shortcode: code,
+        createdAt: now,
       });
       log('info', 'Shortened URL created', { longUrl, shortUrl: SHORT_URL_PREFIX + code, expiry, shortcode: code });
     }
@@ -235,7 +253,45 @@ function UrlShortenerPage() {
 }
 
 function StatisticsPage() {
-  return <div>Statistics Page (to be implemented)</div>;
+  const [links, setLinks] = React.useState<ShortenedUrl[]>([]);
+  const [clickStats, setClickStats] = React.useState<Record<string, number>>({});
+
+  React.useEffect(() => {
+    setLinks(getStoredShortLinks());
+    setClickStats(getClickStats());
+  }, []);
+
+  return (
+    <Box>
+      <Typography variant="h5" gutterBottom>Shortened URL Statistics</Typography>
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={{ borderBottom: '1px solid #ccc', padding: 8 }}>Short URL</th>
+              <th style={{ borderBottom: '1px solid #ccc', padding: 8 }}>Original URL</th>
+              <th style={{ borderBottom: '1px solid #ccc', padding: 8 }}>Created</th>
+              <th style={{ borderBottom: '1px solid #ccc', padding: 8 }}>Expiry</th>
+              <th style={{ borderBottom: '1px solid #ccc', padding: 8 }}>Clicks</th>
+            </tr>
+          </thead>
+          <tbody>
+            {links.map((link, idx) => (
+              <tr key={idx}>
+                <td style={{ padding: 8 }}>
+                  <a href={`/${link.shortcode}`} target="_blank" rel="noopener noreferrer">{link.shortUrl}</a>
+                </td>
+                <td style={{ padding: 8, wordBreak: 'break-all' }}>{link.longUrl}</td>
+                <td style={{ padding: 8 }}>{link.createdAt || '-'}</td>
+                <td style={{ padding: 8 }}>{link.expiry}</td>
+                <td style={{ padding: 8, textAlign: 'center' }}>{clickStats[link.shortcode] || 0}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Paper>
+    </Box>
+  );
 }
 
 function App() {
