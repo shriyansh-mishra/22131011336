@@ -60,4 +60,3 @@ affordReact/
 
 
 ---
-Feel free to customize this README as needed for your submission or deployment. 
