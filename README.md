@@ -57,8 +57,6 @@ affordReact/
 - If you encounter a 401 Unauthorized error from the logging API, ensure your token is valid and the Authorization header is correctly formatted as `Bearer <token>`.
 - The app does not include a backend for URL storage; all data is managed client-side.
 
-## Author
-- Roll No: 22scse1011344
+
 
 ---
-Feel free to customize this README as needed for your submission or deployment. 
