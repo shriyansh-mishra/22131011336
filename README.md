@@ -53,7 +53,4 @@ affordReact/
 - **Authorization:** You must provide a valid Bearer token in the Authorization header. The token is set in the middleware code.
 - Logs are sent when key actions occur in the app (e.g., shortening a URL, viewing statistics).
 
-
-
-
 ---
